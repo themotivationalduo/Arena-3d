@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .animate-purchased {
+    animation: purchased 0.5s ease-out;
+  }
+  @keyframes purchased {
+    0% { transform: scale(1); background-color: #3b82f6; }
+    50% { transform: scale(1.1); background-color: #22c55e; }
+    100% { transform: scale(1); background-color: #3b82f6; }
+  }
+}

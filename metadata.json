@@ -1,0 +1,8 @@
+{
+  "name": "Remix Arena Strike 3D - Mobile Survival Shooter",
+  "description": "A high-performance mobile-optimized 3D battle royale arena shooter built with Three.js and Tailwind CSS featuring touch virtual joystick, camera orbit, low-poly bots, and audio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

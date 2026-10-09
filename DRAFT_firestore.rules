@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Validation
+    function isValidUser(data) {
+      return data.username is string && data.username.size() >= 3 && data.username.size() <= 20
+          && data.currency is number && data.currency >= 0
+          && data.equippedSkin is string && data.equippedSkin.size() <= 128;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().keys().hasAll(['username', 'currency', 'equippedSkin']) && incoming().keys().hasOnly(['username', 'currency', 'equippedSkin']);
+      allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['currency', 'equippedSkin', 'username']);
+    }
+
+    // Friend Validation
+    function isValidFriend(data) {
+      return data.username is string && data.username.size() >= 3 && data.username.size() <= 20
+          && data.userId is string && data.userId.size() <= 128;
+    }
+
+    match /users/{userId}/friends/{friendId} {
+      allow read, create, update, delete: if isOwner(userId);
+    }
+
+    // Owned Skin Validation
+    function isValidOwnedSkin(data) {
+      return data.skinId is string && data.skinId.size() <= 128;
+    }
+
+    match /users/{userId}/ownedSkins/{skinId} {
+      allow read, create, update, delete: if isOwner(userId);
+    }
+
+    // Settings Validation
+    function isValidSettings(data) {
+      return data.graphicsQuality in ['low', 'medium', 'high']
+          && data.audioVolume is number && data.audioVolume >= 0 && data.audioVolume <= 100;
+    }
+
+    match /users/{userId}/settings/userSettings {
+      allow read, create, update: if isOwner(userId) && (request.method == 'read' || isValidSettings(incoming()));
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

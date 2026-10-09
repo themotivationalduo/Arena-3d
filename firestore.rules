@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Validation
+    function isValidUser(data) {
+      return data.username is string && data.username.size() >= 1 && data.username.size() <= 32
+          && data.currency is number && data.currency >= 0
+          && data.equippedSkin is string && data.equippedSkin.size() <= 128;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['currency', 'equippedSkin', 'username', 'highScore', 'highWave', 'ownedSkins', 'purchasedSkins']);
+    }
+
+    // Mission Validation
+    function isValidMission(data) {
+      return data.id is string && data.id.size() <= 64
+          && data.description is string && data.description.size() <= 200
+          && data.target is number && data.target >= 0
+          && data.current is number && data.current >= 0
+          && data.reward is string && data.reward.size() <= 100;
+    }
+
+    match /users/{userId}/missions/{missionId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidMission(incoming());
+    }
+
+    // Friend Validation
+    function isValidFriend(data) {
+      return data.username is string && data.username.size() >= 1 && data.username.size() <= 32
+          && data.userId is string && data.userId.size() <= 128;
+    }
+
+    match /users/{userId}/friends/{friendId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidFriend(incoming());
+    }
+
+    // Owned Skin Validation
+    function isValidOwnedSkin(data) {
+      return data.skinId is string && data.skinId.size() <= 128;
+    }
+
+    match /users/{userId}/ownedSkins/{skinId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidOwnedSkin(incoming());
+    }
+
+    // Settings Validation
+    function isValidSettings(data) {
+      return data.graphicsQuality in ['low', 'medium', 'high']
+          && data.audioVolume is number && data.audioVolume >= 0 && data.audioVolume <= 100;
+    }
+
+    match /users/{userId}/settings/userSettings {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidSettings(incoming());
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

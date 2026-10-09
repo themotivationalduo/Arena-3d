@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#141c2e"/>
+      <stop offset="100%" stop-color="#0b0f19"/>
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Outer Tactical Ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#f59e0b" stroke-width="12" opacity="0.8" />
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#06b6d4" stroke-width="6" stroke-dasharray="30 15" opacity="0.9" />
+  <!-- Inner Ring -->
+  <circle cx="256" cy="256" r="110" fill="none" stroke="#06b6d4" stroke-width="8" opacity="0.7"/>
+  <!-- Crossbars -->
+  <line x1="60" y1="256" x2="200" y2="256" stroke="#ff5500" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="312" y1="256" x2="452" y2="256" stroke="#ff5500" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="256" y1="60" x2="256" y2="200" stroke="#ff5500" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="256" y1="312" x2="256" y2="452" stroke="#ff5500" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Center Bullseye -->
+  <circle cx="256" cy="256" r="32" fill="#fbbf24" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="12" fill="#ffffff"/>
+</svg>

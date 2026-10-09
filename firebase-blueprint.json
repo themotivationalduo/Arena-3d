@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "currency": { "type": "number" },
+        "equippedSkin": { "type": "string" },
+        "highScore": { "type": "number" },
+        "highWave": { "type": "number" },
+        "ownedSkins": { "type": "array" }
+      },
+      "required": ["username", "currency", "equippedSkin"]
+    },
+    "Mission": {
+      "title": "Mission",
+      "description": "Daily tactical combat mission directive",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "target": { "type": "number" },
+        "current": { "type": "number" },
+        "reward": { "type": "string" }
+      },
+      "required": ["id", "description", "target", "current", "reward"]
+    },
+    "Friend": {
+      "title": "Friend",
+      "description": "Friend user reference",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["username", "userId"]
+    },
+    "OwnedSkin": {
+      "title": "OwnedSkin",
+      "description": "Skin owned by user",
+      "type": "object",
+      "properties": {
+        "skinId": { "type": "string" }
+      },
+      "required": ["skinId"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "User preferences",
+      "type": "object",
+      "properties": {
+        "graphicsQuality": { "type": "string", "enum": ["low", "medium", "high"] },
+        "audioVolume": { "type": "number" }
+      },
+      "required": ["graphicsQuality", "audioVolume"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile document"
+    },
+    "/users/{userId}/missions/{missionId}": {
+      "schema": { "$ref": "#/entities/Mission" },
+      "description": "User daily mission documents"
+    },
+    "/users/{userId}/friends/{friendId}": {
+      "schema": { "$ref": "#/entities/Friend" },
+      "description": "User's friends list"
+    },
+    "/users/{userId}/ownedSkins/{skinId}": {
+      "schema": { "$ref": "#/entities/OwnedSkin" },
+      "description": "Skins owned by the user"
+    },
+    "/users/{userId}/settings/userSettings": {
+      "schema": { "$ref": "#/entities/Settings" },
+      "description": "User's settings"
+    }
+  }
+}
