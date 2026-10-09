@@ -5,6 +5,7 @@
   "description": "A high-performance mobile-optimized battle royale arena shooter.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "landscape",
   "background_color": "#000000",
   "theme_color": "#000000",
   "lang": "en",
