@@ -9,6 +9,7 @@
  */
 
 import { updateMissionProgress, saveMatchResults, updateCurrency } from '../services/userService';
+import { PostGameSummaryData } from '../components/PostGameSummaryModal';
 
 export interface WeaponDef {
   id: string;
@@ -191,7 +192,10 @@ export class BattleRoyale2D {
   zoneShrinking = false;
   zoneDps = 4; // damage per sec outside zone
 
-  // Match statistics
+  // Match statistics & Wave state
+  currentWave = 1;
+  maxWaves = 5;
+  score = 0;
   aliveCount = 25;
   killCount = 0;
   matchDamage = 0;
@@ -230,8 +234,10 @@ export class BattleRoyale2D {
     zoneShrinking: boolean;
     isReloading: boolean;
     isScoping: boolean;
+    wave: number;
   }) => void;
   onMatchEnd?: (result: { victory: boolean; kills: number; damage: number; rank: number }) => void;
+  onPostGameSummary?: (summary: PostGameSummaryData) => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -474,25 +480,8 @@ export class BattleRoyale2D {
       }
     }
 
-    // 5. Spawn 24 Rogue AI Bots
-    const botNames = [
-      'Ghost_47', 'ShadowWolf', 'Rojob4R3r', 'DeltaSniper', 'Viper99',
-      'K_HERO_IM', 'StrikerX', 'Neo_Blade', 'AlphaRecon', 'Falcon7',
-      'Phoenix_FF', 'Zero_Cool', 'RaptorElite', 'CobraCommander', 'Slayer99',
-      'IronClad', 'Titan_Bot', 'Spectre_01', 'CyberNinja', 'WarMaster',
-      'BulletStorm', 'BlazeRider', 'NightRaid', 'ApexPredator'
-    ];
-
-    for (let i = 0; i < 24; i++) {
-      const bx = 200 + Math.random() * (this.worldWidth - 400);
-      const by = 200 + Math.random() * (this.worldHeight - 400);
-      const bot = this.createEntity(`bot_${i}`, false, botNames[i], bx, by);
-      // Give random starting weapon
-      const wKey = weaponKeys[Math.floor(Math.random() * weaponKeys.length)];
-      bot.currentWeapon = { ...WEAPON_REGISTRY[wKey] };
-      bot.ammoInMag = bot.currentWeapon.magSize;
-      this.entities.push(bot);
-    }
+    // 5. Spawn Rogue AI Bots for current wave
+    this.spawnWaveEnemies(this.currentWave);
 
     // Zone initialization
     this.zoneCenterX = this.worldWidth / 2;
@@ -510,7 +499,70 @@ export class BattleRoyale2D {
     this.isGameOver = false;
     this.isVictory = false;
 
-    this.addKillFeedMessage('25 OPERATORS DEPLOYED INTO THE ARENA', '#06b6d4');
+    this.addKillFeedMessage(`WAVE ${this.currentWave} STARTED · ELIMINATE ALL HOSTILES`, '#06b6d4');
+  }
+
+  spawnWaveEnemies(wave: number) {
+    this.entities = [this.player];
+
+    const botCount = Math.min(24, 6 + wave * 4);
+    const weaponKeys = ['m4a1', 'ump', 'shotgun', 'awm'];
+    const botNames = [
+      'Ghost_47', 'ShadowWolf', 'Rojob4R3r', 'DeltaSniper', 'Viper99',
+      'K_HERO_IM', 'StrikerX', 'Neo_Blade', 'AlphaRecon', 'Falcon7',
+      'Phoenix_FF', 'Zero_Cool', 'RaptorElite', 'CobraCommander', 'Slayer99',
+      'IronClad', 'Titan_Bot', 'Spectre_01', 'CyberNinja', 'WarMaster',
+      'BulletStorm', 'BlazeRider', 'NightRaid', 'ApexPredator'
+    ];
+
+    for (let i = 0; i < botCount; i++) {
+      const bx = 200 + Math.random() * (this.worldWidth - 400);
+      const by = 200 + Math.random() * (this.worldHeight - 400);
+      const bot = this.createEntity(`bot_${wave}_${i}`, false, botNames[i % botNames.length], bx, by);
+      const wKey = wave >= 3 && Math.random() < 0.4 ? 'awm' : weaponKeys[Math.floor(Math.random() * weaponKeys.length)];
+      bot.currentWeapon = { ...WEAPON_REGISTRY[wKey] };
+      bot.ammoInMag = bot.currentWeapon.magSize;
+      bot.speed = 175 + wave * 8;
+      bot.hp = 140 + wave * 15;
+      bot.maxHp = bot.hp;
+      this.entities.push(bot);
+    }
+
+    this.aliveCount = this.entities.length;
+    this.addKillFeedMessage(`⚔️ WAVE ${wave}: ${botCount} HOSTILE OPERATORS DETECTED`, '#f59e0b');
+  }
+
+  startNextWave() {
+    this.currentWave++;
+    this.isGameOver = false;
+    this.isVictory = false;
+
+    // Replenish player health and ammo for new wave
+    this.player.hp = Math.min(this.player.maxHp, this.player.hp + 75);
+    this.player.ep = Math.min(200, this.player.ep + 75);
+    this.player.ammoReserve += 120;
+    this.player.ammoInMag = this.player.currentWeapon.magSize;
+
+    // Reset Safe Zone for the new wave
+    this.zoneCenterX = this.worldWidth / 2;
+    this.zoneCenterY = this.worldHeight / 2;
+    this.zoneRadius = 1300;
+    this.targetZoneRadius = 900;
+    this.zoneTimer = 35;
+    this.zoneShrinking = false;
+    this.zonePhase = 1;
+
+    this.spawnWaveEnemies(this.currentWave);
+  }
+
+  restartGame() {
+    this.currentWave = 1;
+    this.killCount = 0;
+    this.matchDamage = 0;
+    this.score = 0;
+    this.isGameOver = false;
+    this.isVictory = false;
+    this.initWorld();
   }
 
   setupListeners() {
@@ -688,8 +740,8 @@ export class BattleRoyale2D {
     const activeAlive = this.entities.filter((e) => !e.isDead);
     this.aliveCount = activeAlive.length;
 
-    if (!this.player.isDead && activeAlive.length === 1 && activeAlive[0].isPlayer) {
-      this.triggerVictory();
+    if (!this.player.isDead && activeAlive.length === 1 && activeAlive[0].isPlayer && !this.isGameOver) {
+      this.triggerWaveCompleted();
     } else if (this.player.isDead && !this.isGameOver) {
       this.triggerDefeat();
     }
@@ -710,6 +762,7 @@ export class BattleRoyale2D {
         zoneShrinking: this.zoneShrinking,
         isReloading: this.player.isReloading,
         isScoping: this.player.isScoping,
+        wave: this.currentWave,
       });
     }
   }
@@ -988,10 +1041,18 @@ export class BattleRoyale2D {
     });
   }
 
-  triggerVictory() {
+  triggerWaveCompleted() {
     this.isGameOver = true;
-    this.isVictory = true;
+    this.isVictory = this.currentWave >= this.maxWaves;
     this.playBooyahSound();
+
+    const earnedCurrency = 100 * this.currentWave + this.killCount * 15;
+    const minutes = Math.floor(this.elapsedTime / 60);
+    const seconds = Math.floor(this.elapsedTime % 60);
+    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    saveMatchResults(this.killCount * 250 + this.currentWave * 500, this.currentWave, this.killCount);
+
     if (this.onMatchEnd) {
       this.onMatchEnd({
         victory: true,
@@ -1000,13 +1061,33 @@ export class BattleRoyale2D {
         rank: 1,
       });
     }
-    saveMatchResults(this.killCount * 300 + 1000, 10, this.killCount);
+
+    if (this.onPostGameSummary) {
+      this.onPostGameSummary({
+        type: 'wave_complete',
+        wave: this.currentWave,
+        totalKills: this.killCount,
+        currencyEarned: earnedCurrency,
+        damage: this.matchDamage,
+        survivalTime: timeStr,
+        isVictory: this.isVictory,
+        score: this.killCount * 250 + this.currentWave * 500,
+      });
+    }
   }
 
   triggerDefeat() {
     this.isGameOver = true;
     this.isVictory = false;
     const rank = this.aliveCount + 1;
+
+    const earnedCurrency = Math.max(30, this.currentWave * 40 + this.killCount * 10);
+    const minutes = Math.floor(this.elapsedTime / 60);
+    const seconds = Math.floor(this.elapsedTime % 60);
+    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    saveMatchResults(this.killCount * 150 + 200, this.currentWave, this.killCount);
+
     if (this.onMatchEnd) {
       this.onMatchEnd({
         victory: false,
@@ -1015,7 +1096,19 @@ export class BattleRoyale2D {
         rank,
       });
     }
-    saveMatchResults(this.killCount * 150 + 200, 3, this.killCount);
+
+    if (this.onPostGameSummary) {
+      this.onPostGameSummary({
+        type: 'player_died',
+        wave: this.currentWave,
+        totalKills: this.killCount,
+        currencyEarned: earnedCurrency,
+        damage: this.matchDamage,
+        survivalTime: timeStr,
+        isVictory: false,
+        score: this.killCount * 150 + 200,
+      });
+    }
   }
 
   // ==========================================
